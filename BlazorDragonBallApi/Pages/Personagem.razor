@@ -1,0 +1,108 @@
+@page "/personagem"
+@inject HttpClient Http
+
+<PageTitle>Personagem Dragon Ball</PageTitle>
+
+<h1>Informações do Personagem</h1>
+
+<div class="form-card">
+    <label for="idPersonagem">Digite o ID do personagem:</label>
+    <input id="idPersonagem" type="number" min="1" @bind="idPersonagem" />
+    <button @onclick="BuscarPersonagem" disabled="@carregando">Buscar</button>
+</div>
+
+@if (carregando)
+{
+    <p>Buscando personagem...</p>
+}
+else if (!string.IsNullOrWhiteSpace(mensagemErro))
+{
+    <p class="erro">@mensagemErro</p>
+}
+else if (personagem is not null)
+{
+    <section class="resultado">
+        <h2>@personagem.Name</h2>
+
+        <p><strong>Nome:</strong> @personagem.Name</p>
+        <p><strong>Planeta de Origem:</strong> @(personagem.OriginPlanet?.Name ?? "Não informado")</p>
+
+        <h3>Transformações:</h3>
+        @if (personagem.Transformations is not null && personagem.Transformations.Count > 0)
+        {
+            <ul>
+                @foreach (var transformacao in personagem.Transformations)
+                {
+                    <li>@transformacao.Name</li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p>Esse personagem não possui transformações cadastradas.</p>
+        }
+    </section>
+}
+
+@code {
+    private int idPersonagem = 1;
+    private bool carregando;
+    private string? mensagemErro;
+    private DragonBallCharacter? personagem;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await BuscarPersonagem();
+    }
+
+    private async Task BuscarPersonagem()
+    {
+        mensagemErro = null;
+        personagem = null;
+
+        if (idPersonagem <= 0)
+        {
+            mensagemErro = "Informe um ID válido maior que zero.";
+            return;
+        }
+
+        try
+        {
+            carregando = true;
+            personagem = await Http.GetFromJsonAsync<DragonBallCharacter>($"characters/{idPersonagem}");
+
+            if (personagem is null)
+            {
+                mensagemErro = "Personagem não encontrado.";
+            }
+        }
+        catch
+        {
+            mensagemErro = "Não foi possível buscar o personagem. Verifique o ID informado e tente novamente.";
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    public class DragonBallCharacter
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public Planet? OriginPlanet { get; set; }
+        public List<Transformation>? Transformations { get; set; }
+    }
+
+    public class Planet
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+    }
+
+    public class Transformation
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+    }
+}
